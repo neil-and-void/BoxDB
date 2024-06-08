@@ -10,8 +10,8 @@ type Memtable interface {
 	Get(k string) *Node
 }
 
-const POS_INF = "+INF"
 const NEG_INF = "-INF"
+const POS_INF = "+INF"
 const HEADS = 1
 
 type SkipList struct {
@@ -34,47 +34,80 @@ func New(maxHeight uint8) *SkipList {
 func (s *SkipList) Put(k string, v string) {
 	head := s.head
 	tail := s.tail
+	curNode := s.head
 
 	newNode := &Node{
 		key: k,
 		val: v,
 	}
 
-	for head.next != tail {
-		if head.next != nil && head.next.key < newNode.key {
-			head = head.next
-		} else if newNode.key < head.next.key && head.down != nil {
-			head = head.down
+	for curNode.next != tail {
+		if curNode.next != nil && curNode.next.key < newNode.key {
+			curNode = curNode.next
+		} else if newNode.key < curNode.next.key && curNode.down != nil {
+			curNode = curNode.down
 			tail = tail.down
+			head = head.down
 		} else {
+			// found it
 			break
 		}
 	}
 
-	newNode.next = head.next
-	head.next.prev = newNode
-	head.next = newNode
-	newNode.prev = head
+	newNode.next = curNode.next
+	curNode.next.prev = newNode
+	curNode.next = newNode
+	newNode.prev = curNode
 
-	i := uint8(0)
-	for i < s.maxHeight && s.coinflip() == HEADS {
-		columnNode := &Node{
+	nearestLeftNode := newNode.prev
+	nearestRightNode := newNode.next
+	curNode = newNode
+
+	var i uint8 = 0
+	for s.coinflip() == HEADS {
+		if i >= s.height-1 {
+			colHead := &Node{key: NEG_INF}
+			colTail := &Node{key: POS_INF}
+
+			head.up = colHead
+			tail.up = colTail
+
+			s.height++
+		}
+
+		for nearestLeftNode.up == nil {
+			nearestLeftNode = nearestLeftNode.prev
+		}
+		nearestLeftNode = nearestLeftNode.up
+
+		for nearestRightNode.up == nil {
+			nearestRightNode = nearestRightNode.next
+		}
+		nearestRightNode = nearestRightNode.up
+
+		newColumnNode := &Node{
 			key: k,
 			val: v,
 		}
 
-		newNode.up = columnNode
-		columnNode.down = newNode
+		curNode.up = newColumnNode
+		newColumnNode.down = curNode
 
-		// todo: left and right
+		newColumnNode.prev = nearestLeftNode
+		newColumnNode.next = nearestRightNode
+		nearestLeftNode.next = newColumnNode
+		nearestRightNode.prev = newColumnNode
 
-		columnNode = newNode
+		curNode = newColumnNode
+		head = head.up
+		tail = tail.up
 
 		i++
 	}
 }
 
 func (s *SkipList) Get(k string) *Node {
+	// todo
 	return &Node{}
 }
 
@@ -89,8 +122,6 @@ func (s *SkipList) Print() {
 		head = head.down
 	}
 
-	columns := [][]string{}
-
 	for head != nil {
 
 		colNode := head
@@ -101,14 +132,9 @@ func (s *SkipList) Print() {
 			colNode = colNode.up
 		}
 
-		columns = append(columns, column)
-
+		fmt.Println(column)
 		head = head.next
 	}
-
-	fmt.Println(columns)
-
-	fmt.Printf("nil\n")
 }
 
 type Node struct {
