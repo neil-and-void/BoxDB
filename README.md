@@ -1,4 +1,6 @@
 # boxdb
+Boxdb is a little toy project to get hands on experience implementing a kv store that utilizes an LSM tree, the same datastructure that [RocksDB](https://github.com/facebook/rocksdb) uses
+
 
 ## Architecture Diagram
 
