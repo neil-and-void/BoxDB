@@ -32,26 +32,27 @@ func New(maxHeight uint8) *SkipList {
 }
 
 func (s *SkipList) Put(k string, v string) {
+	fmt.Println("inserting ", k)
 	head := s.head
 	tail := s.tail
 	curNode := s.head
 
-	newNode := &Node{
-		key: k,
-		val: v,
-	}
-
 	for curNode.next != tail {
-		if curNode.next != nil && curNode.next.key < newNode.key {
+		if curNode.next.key < k {
 			curNode = curNode.next
-		} else if newNode.key < curNode.next.key && curNode.down != nil {
+		} else if curNode.down != nil {
 			curNode = curNode.down
 			tail = tail.down
 			head = head.down
 		} else {
-			// found it
+			// key is smmaller than next and down is nil, means we are at the node before the insert spot
 			break
 		}
+	}
+
+	newNode := &Node{
+		key: k,
+		val: v,
 	}
 
 	newNode.next = curNode.next
@@ -63,18 +64,22 @@ func (s *SkipList) Put(k string, v string) {
 	nearestRightNode := newNode.next
 	curNode = newNode
 
-	var i uint8 = 0
+	var levelIndex uint8 = 0
 	for s.coinflip() == HEADS {
-		if i >= s.height-1 {
+		if levelIndex >= s.height-1 {
 			colHead := &Node{key: NEG_INF}
 			colTail := &Node{key: POS_INF}
 
 			head.up = colHead
 			tail.up = colTail
 
+			s.head = colHead
+			s.tail = colTail
+
 			s.height++
 		}
 
+		fmt.Println(nearestLeftNode.up, "what")
 		for nearestLeftNode.up == nil {
 			nearestLeftNode = nearestLeftNode.prev
 		}
@@ -102,13 +107,29 @@ func (s *SkipList) Put(k string, v string) {
 		head = head.up
 		tail = tail.up
 
-		i++
+		levelIndex++
 	}
 }
 
-func (s *SkipList) Get(k string) *Node {
-	// todo
-	return &Node{}
+func (s *SkipList) Get(k string) *string {
+	curNode := s.head
+	tail := s.tail
+
+	for curNode != tail {
+		fmt.Println(k, curNode)
+		if k == curNode.key {
+			return &curNode.val
+		} else if k > curNode.next.key {
+			curNode = curNode.next
+		} else if curNode.down != nil {
+			curNode = curNode.down
+			tail = tail.down
+		} else {
+			break
+		}
+	}
+
+	return nil
 }
 
 func (s *SkipList) coinflip() int {
