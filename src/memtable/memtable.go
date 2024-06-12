@@ -64,16 +64,8 @@ func (s *SkipList) Put(k string, v string) {
 			tail = tail.down
 			head = head.down
 		} else {
-			// here key is smmaller than next and down is nil, means we are at the node before the insert spot
 			break
 		}
-	}
-
-	// might've found the right node but now need to go to bottom level for insert
-	for curNode.down != nil {
-		curNode = curNode.down
-		tail = tail.down
-		head = head.down
 	}
 
 	newNode := &node{
@@ -146,7 +138,6 @@ func (s *SkipList) Get(k string) *string {
 	tail := s.tail
 
 	for curNode != tail {
-		fmt.Println(curNode)
 		if k == curNode.key {
 			return &curNode.val
 		} else if curNode.next != tail && curNode.next.key <= k {
