@@ -7,7 +7,7 @@ import (
 )
 
 func setupSuite() *SkipList {
-	skipList := New(StringComparer{}, 1)
+	skipList := NewMemTable(StringComparer{}, 1)
 
 	// Return a function to teardown the test
 	return skipList

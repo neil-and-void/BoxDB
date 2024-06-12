@@ -7,7 +7,7 @@ import (
 
 type Memtable interface {
 	Put(k string, v string)
-	Get(k string) *node
+	Get(k string) *string
 }
 
 const NEG_INF = "__-INF__"
@@ -31,7 +31,7 @@ type SkipList struct {
 	comparer  Comparer
 }
 
-func New(comparer Comparer, maxHeight uint8) *SkipList {
+func NewMemTable(comparer Comparer, maxHeight uint8) *SkipList {
 	head := &node{key: NEG_INF}
 	tail := &node{key: POS_INF}
 
