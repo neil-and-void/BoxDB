@@ -6,17 +6,20 @@ import (
 )
 
 func main() {
-	fmt.Println("hello world!")
-
 	var maxHeight uint8 = 3
-	skipList := memtable.New(maxHeight)
+	skipList := memtable.New(memtable.StringComparer{}, maxHeight)
 
-	for i := 0; i < 10; i++ {
+	for i := 1; i <= 3; i += 1 {
 		skipList.Put(fmt.Sprintf("%d", i), fmt.Sprintf("%d-val", i))
 	}
 
+	skipList.Put("2", "Updated")
+
 	skipList.Print()
 
-	// val := skipList.Get("5")
-	// fmt.Println(val)
+	// fmt.Println("get")
+	// val := skipList.Get("87")
+	// if val != nil {
+	// 	fmt.Println(*val)
+	// }
 }

@@ -7,79 +7,108 @@ import (
 
 type Memtable interface {
 	Put(k string, v string)
-	Get(k string) *Node
+	Get(k string) *node
 }
 
-const NEG_INF = "-INF"
-const POS_INF = "+INF"
+const NEG_INF = "__-INF__"
+const POS_INF = "__+INF__"
 const HEADS = 1
 
-type SkipList struct {
-	head      *Node
-	tail      *Node
-	height    uint8
-	maxHeight uint8
+type node struct {
+	key  string
+	val  string
+	up   *node
+	down *node
+	next *node
+	prev *node
 }
 
-func New(maxHeight uint8) *SkipList {
-	head := &Node{key: NEG_INF}
-	tail := &Node{key: POS_INF}
+type SkipList struct {
+	head      *node
+	tail      *node
+	height    uint8
+	maxHeight uint8
+	comparer  Comparer
+}
+
+func New(comparer Comparer, maxHeight uint8) *SkipList {
+	head := &node{key: NEG_INF}
+	tail := &node{key: POS_INF}
 
 	head.next = tail
 	tail.prev = head
 
-	return &SkipList{head, tail, 1, maxHeight}
+	return &SkipList{head, tail, 1, maxHeight, comparer}
 }
 
 func (s *SkipList) Put(k string, v string) {
-	fmt.Println("inserting ", k)
+	if k == POS_INF || k == NEG_INF {
+		panic("Cannot use reserved key")
+	}
+
 	head := s.head
 	tail := s.tail
 	curNode := s.head
 
-	for curNode.next != tail {
-		if curNode.next.key < k {
+	for curNode.next != nil {
+		if curNode.key == k {
+			for curNode != nil {
+				curNode.val = v
+				curNode = curNode.down
+			}
+			return
+		} else if s.comparer.isLessThanOrEqual(curNode.next.key, k) {
 			curNode = curNode.next
-		} else if curNode.down != nil {
+		} else if s.comparer.isLessThan(k, curNode.next.key) && curNode.down != nil {
 			curNode = curNode.down
 			tail = tail.down
 			head = head.down
 		} else {
-			// key is smmaller than next and down is nil, means we are at the node before the insert spot
+			// here key is smmaller than next and down is nil, means we are at the node before the insert spot
 			break
 		}
 	}
 
-	newNode := &Node{
+	// might've found the right node but now need to go to bottom level for insert
+	for curNode.down != nil {
+		curNode = curNode.down
+		tail = tail.down
+		head = head.down
+	}
+
+	newNode := &node{
 		key: k,
 		val: v,
 	}
 
 	newNode.next = curNode.next
+	newNode.prev = curNode
+
 	curNode.next.prev = newNode
 	curNode.next = newNode
-	newNode.prev = curNode
 
 	nearestLeftNode := newNode.prev
 	nearestRightNode := newNode.next
 	curNode = newNode
 
 	var levelIndex uint8 = 0
-	for s.coinflip() == HEADS {
+	for s.coinflip() == HEADS && s.height < s.maxHeight {
 		if levelIndex >= s.height-1 {
-			colHead := &Node{key: NEG_INF}
-			colTail := &Node{key: POS_INF}
+			newHead := &node{key: NEG_INF}
+			newTail := &node{key: POS_INF}
 
-			head.up = colHead
-			tail.up = colTail
+			head.up = newHead
+			tail.up = newTail
 
-			s.head = colHead
-			s.tail = colTail
+			newHead.down = head
+			newTail.down = tail
+
+			s.head = newHead
+			s.tail = newTail
 
 			s.height++
 		}
 
-		fmt.Println(nearestLeftNode.up, "what")
 		for nearestLeftNode.up == nil {
 			nearestLeftNode = nearestLeftNode.prev
 		}
@@ -90,7 +119,7 @@ func (s *SkipList) Put(k string, v string) {
 		}
 		nearestRightNode = nearestRightNode.up
 
-		newColumnNode := &Node{
+		newColumnNode := &node{
 			key: k,
 			val: v,
 		}
@@ -98,10 +127,11 @@ func (s *SkipList) Put(k string, v string) {
 		curNode.up = newColumnNode
 		newColumnNode.down = curNode
 
-		newColumnNode.prev = nearestLeftNode
 		newColumnNode.next = nearestRightNode
-		nearestLeftNode.next = newColumnNode
 		nearestRightNode.prev = newColumnNode
+
+		newColumnNode.prev = nearestLeftNode
+		nearestLeftNode.next = newColumnNode
 
 		curNode = newColumnNode
 		head = head.up
@@ -116,10 +146,10 @@ func (s *SkipList) Get(k string) *string {
 	tail := s.tail
 
 	for curNode != tail {
-		fmt.Println(k, curNode)
+		fmt.Println(curNode)
 		if k == curNode.key {
 			return &curNode.val
-		} else if k > curNode.next.key {
+		} else if curNode.next != tail && curNode.next.key <= k {
 			curNode = curNode.next
 		} else if curNode.down != nil {
 			curNode = curNode.down
@@ -145,24 +175,15 @@ func (s *SkipList) Print() {
 
 	for head != nil {
 
-		colNode := head
-		column := []string{}
+		curNode := head
 
-		for colNode != nil {
-			column = append(column, colNode.key)
-			colNode = colNode.up
+		for curNode != nil {
+			fmt.Printf("(%s | %s) ", curNode.key, curNode.val)
+			curNode = curNode.up
 		}
 
-		fmt.Println(column)
+		fmt.Printf("\n")
+
 		head = head.next
 	}
-}
-
-type Node struct {
-	key  string
-	val  string
-	up   *Node
-	down *Node
-	next *Node
-	prev *Node
 }
